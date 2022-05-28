@@ -22,9 +22,12 @@ public:
     // Constructor and Destructor / all
 
     vector() { create(); }
-    explicit vector(size_type n, const value_type &value = value_type()) { create(n, value); }
+    explicit vector(size_type n, const T &value = T()) { create(n, value); }
     vector(const vector &other) { create(other.begin(), other.end()); }
-    vector(std::initializer_list<value_type> il) { create(il.begin(), il.end()); }
+    vector(std::initializer_list<T> il) { 
+        vData=alloc.allocate(il.size());
+        vSize=vCapacity=std::uninitialized_copy(il.begin(), il.end(), vData);
+    }
     ~vector() { uncreate(); }
     
     // Iterators / done
@@ -40,7 +43,7 @@ public:
 
     // Capacity
 
-    size_type size() const noexcept { return vSize; }
+    size_type size() const noexcept { return vSize-vData; }
     size_type max_size() const noexcept{ return std::numeric_limits<size_type>::max(); }
     void resize (size_type n) {
         if (n > 0 || n > size())
@@ -63,16 +66,14 @@ public:
     size_type capacity() const { return vCapacity - vData;}
     bool empty() const noexcept { return (vSize==0?true:false); }
     void reserve(size_type n) {
-        if (n<=capacity())
-            return;
-        if (n<=0)
-            throw std::invalid_argument("Value must be positive");
-        iterator newData = alloc.allocate(n);
-        iterator newSize = std::uninitialized_copy(vData, vSize, newData);
-        uncreate();
-        vData = newData;
-        vSize = newSize;
-        vCapacity = vData + n;        
+        if(n > capacity()) {
+            iterator newData = alloc.allocate(n);
+            iterator newSize = std::uninitialized_copy(vData, vSize, newData);
+            uncreate();
+            vData = newData;
+            vSize = newSize;
+            vCapacity = vData + n;
+        }     
     }
     void shrink_to_fit(){
         if (vSize != vCapacity) {
@@ -84,24 +85,22 @@ public:
     // Element access
 
     reference operator[] (size_type n) {
-        if(n>=size())
-            throw std::out_of_range("Index out of range");
         return vData[n];
     }
     const_reference operator[] (size_type n) const  {
-        if(n>=size())
-            throw std::out_of_range("Index out of range");
         return vData[n];
     }
     reference at (size_type n) {
-        if(n>=size())
+        if(n < size() && n >= 0)
+            return vData[n];
+        else
             throw std::out_of_range("Index out of range");
-        return vData[n];
     }
     const_reference at (size_type n) const {
-        if(n>=size())
+        if(n < size() && n >= 0)
+            return vData[n];
+        else
             throw std::out_of_range("Index out of range");
-        return vData[n];
     }
     reference front() {return *vData;}
     const_reference front() const {return *vData;}
@@ -137,10 +136,9 @@ public:
     void push_back (const value_type& val){ 
         if(vCapacity == vSize)
             grow();
-        alloc.construct(vSize, val);
-        ++vSize;
+        alloc.construct(vSize++, val);
     }
-    void pop_back(){ iterator it = vSize; --it; alloc.destroy(it); --vSize; }
+    void pop_back(){ iterator it = vSize; alloc.destroy(--it); vSize--; }
     iterator insert (const_iterator position, const value_type& val){
     auto pos = position - vData;
     if (vSize == vCapacity)
@@ -264,10 +262,8 @@ private:
         std::uninitialized_fill(vData, vCapacity, val);
     }
     void create(const_iterator first, const_iterator last){
-        vData = alloc.allocate(last-first);
-        vSize = vData;
-        vCapacity = vData + (last-first);
-        std::uninitialized_copy(first, last, vData);
+        vData= alloc.allocate(last-first);
+        vCapacity = vSize = std::uninitialized_copy(first, last, vData);
     }
     void uncreate(){
         if(vData){
