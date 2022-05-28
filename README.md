@@ -6,7 +6,7 @@ Sukurta C++ vector klasė, pagal std::vector konteinerį.
 
 1. Parsisiųskite header failą.
 2. Įtraukite failą į savo projektą:
-`#include "Vector.h`
+`#include "Vector.h"`
 3. Naudokite taip pat, kaip naudotumėte std::vector, tačiau praleiskite std:: dalį.
 
 ## Funkcijos ir jų veikimas:
